@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>DEX BOT — Mission Control</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --o:#FF6B35;--og:rgba(255,107,53,0.12);--ob:rgba(255,107,53,0.25);
+  --bg:#080A0C;--bg2:#0D0F12;--bg3:#121518;--bg4:#171A1E;
+  --bd:rgba(255,107,53,0.15);--bd2:rgba(255,255,255,0.06);
+  --tx:#E8E4DC;--tx2:#7A7672;--tx3:#3A3834;
+  --gr:#3DCC7A;--re:#E05252;--bl:#5B9BD5;--pu:#B978FF;--ye:#FFC832;
+}
+body{font-family:'Rajdhani',sans-serif;background:var(--bg);color:var(--tx);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.04) 2px,rgba(0,0,0,0.04) 4px);pointer-events:none;z-index:999}
+body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 80% 50% at 50% -10%,rgba(255,107,53,0.06),transparent);pointer-events:none;z-index:998}
+
+/* HEADER */
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:1rem 2rem;border-bottom:1px solid var(--bd);background:var(--bg2);position:sticky;top:0;z-index:100;backdrop-filter:blur(10px)}
+.logo{display:flex;align-items:center;gap:14px}
+.lmark{width:36px;height:36px;border:2px solid var(--o);display:flex;align-items:center;justify-content:center;font-family:'Share Tech Mono',monospace;font-size:13px;color:var(--o);clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px));animation:borderPulse 3s ease-in-out infinite}
+@keyframes borderPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,107,53,0)}50%{box-shadow:0 0 12px 2px rgba(255,107,53,0.3)}}
+.ltxt{font-size:20px;font-weight:700;letter-spacing:4px;color:var(--tx)}
+.lsub{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--tx2);letter-spacing:2px;margin-top:1px}
+.hdr-right{display:flex;align-items:center;gap:12px}
+.live-pill{display:flex;align-items:center;gap:6px;font-family:'Share Tech Mono',monospace;font-size:11px;padding:5px 14px;border:1px solid;clip-path:polygon(6px 0,100% 0,100% 100%,0 100%,0 6px)}
+.live-pill.online{color:var(--gr);border-color:rgba(61,204,122,0.3);background:rgba(61,204,122,0.06)}
+.live-pill.offline{color:var(--tx3);border-color:var(--bd2)}
+.live-dot{width:6px;height:6px;border-radius:50%}
+.online .live-dot{background:var(--gr);animation:blink 1.5s ease-in-out infinite}
+.offline .live-dot{background:var(--tx3)}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.2}}
+
+/* LAYOUT */
+.wrap{display:grid;grid-template-columns:300px 1fr;min-height:calc(100vh - 65px)}
+.side{border-right:1px solid var(--bd2);background:var(--bg2);padding:1.5rem;display:flex;flex-direction:column;gap:1.5rem;overflow-y:auto}
+.main{padding:1.5rem 2rem;display:flex;flex-direction:column;gap:1.5rem;overflow-y:auto}
+
+/* SECTIONS */
+.slabel{font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--tx3);text-transform:uppercase;margin-bottom:8px}
+
+/* STAT BLOCKS */
+.stats{display:flex;flex-direction:column;gap:6px}
+.stat{background:var(--bg3);border:1px solid var(--bd2);padding:10px 14px;clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,0 100%)}
+.stat-val{font-size:28px;font-weight:700;color:var(--o);line-height:1}
+.stat-lbl{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--tx2);letter-spacing:1px;margin-bottom:2px}
+.stat-sub{font-size:11px;color:var(--tx3);margin-top:2px}
+
+/* COUNTDOWN */
+.sched-list{display:flex;flex-direction:column;gap:5px}
+.sched-row{display:flex;align-items:center;justify-content:space-between;background:var(--bg3);border:1px solid var(--bd2);padding:7px 10px}
+.sched-time{font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--o)}
+.sched-lbl{font-size:11px;color:var(--tx2)}
+.sched-cd{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--tx3)}
+.sched-row.next{border-color:rgba(255,107,53,0.4);background:var(--og)}
+.sched-row.next .sched-time{color:var(--o)}
+.sched-row.next .sched-cd{color:var(--o)}
+
+/* PANELS */
+.panel{background:var(--bg2);border:1px solid var(--bd2)}
+.ph{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--bd2);background:var(--bg3)}
+.ptitle{font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--tx2);display:flex;align-items:center;gap:8px}
+.ptitle::before{content:'';display:inline-block;width:3px;height:12px;background:var(--o)}
+.pb{padding:16px}
+
+/* POSTS */
+.posts-list{display:flex;flex-direction:column;gap:10px}
+.post-card{background:var(--bg3);border:1px solid var(--bd2);padding:14px;clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,0 100%);transition:border-color 0.2s}
+.post-card:hover{border-color:var(--bd)}
+.post-top{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.post-type{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:1px;padding:2px 8px;text-transform:uppercase;flex-shrink:0}
+.post-time{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--tx3);margin-left:auto}
+.post-text{font-size:13px;color:var(--tx);line-height:1.6;white-space:pre-wrap;word-break:break-word}
+.post-meta{display:flex;gap:12px;margin-top:8px}
+.post-stat{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--tx3)}
+.post-stat span{color:var(--tx2)}
+
+.type-hot_take{border:1px solid rgba(224,82,82,0.4);color:var(--re);background:rgba(224,82,82,0.08)}
+.type-challenge{border:1px solid rgba(255,200,50,0.4);color:var(--ye);background:rgba(255,200,50,0.08)}
+.type-poll{border:1px solid rgba(91,155,213,0.4);color:var(--bl);background:rgba(91,155,213,0.08)}
+.type-tip{border:1px solid rgba(61,204,122,0.4);color:var(--gr);background:rgba(61,204,122,0.08)}
+.type-update{border:1px solid rgba(255,107,53,0.4);color:var(--o);background:var(--og)}
+.type-promo{border:1px solid rgba(185,120,255,0.4);color:var(--pu);background:rgba(185,120,255,0.08)}
+.type-unknown{border:1px solid var(--bd2);color:var(--tx2)}
+
+/* TRIGGER BUTTON */
+.trigger-btn{width:100%;padding:12px;background:var(--og);border:1px solid var(--bd);color:var(--o);font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;letter-spacing:3px;text-transform:uppercase;cursor:pointer;transition:all 0.15s;clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))}
+.trigger-btn:hover{background:rgba(255,107,53,0.2);box-shadow:0 0 20px rgba(255,107,53,0.2)}
+.trigger-btn:disabled{opacity:0.4;cursor:not-allowed}
+
+/* TYPE WEIGHTS */
+.weight-list{display:flex;flex-direction:column;gap:5px}
+.weight-row{display:flex;align-items:center;gap:8px}
+.weight-bar-wrap{flex:1;height:3px;background:var(--bg4)}
+.weight-bar{height:100%;background:var(--o);transition:width 0.5s ease}
+.weight-pct{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--tx3);min-width:30px;text-align:right}
+
+/* LOG */
+.log{font-family:'Share Tech Mono',monospace;font-size:11px;background:var(--bg3);border:1px solid var(--bd2);padding:12px;height:120px;overflow-y:auto;display:flex;flex-direction:column;gap:3px}
+.ll{color:var(--tx2)}.ll.ok{color:var(--gr)}.ll.err{color:var(--re)}.ll.info{color:var(--o)}
+.lts{color:var(--tx3);margin-right:8px}
+
+/* EMPTY */
+.empty{text-align:center;padding:2rem;font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--tx3);letter-spacing:1.5px;border:1px dashed var(--bd2)}
+
+/* TRIGGER SECTION */
+.trigger-wrap{display:flex;flex-direction:column;gap:8px}
+select{background:var(--bg3);border:1px solid var(--bd2);color:var(--tx);font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:500;padding:8px 10px;outline:none;width:100%;-webkit-appearance:none;clip-path:polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,0 100%)}
+select:focus{border-color:var(--o)}
+input[type=text]{background:var(--bg3);border:1px solid var(--bd2);color:var(--tx);font-family:'Share Tech Mono',monospace;font-size:11px;padding:8px 10px;outline:none;width:100%;clip-path:polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,0 100%)}
+input[type=text]:focus{border-color:var(--o)}
+.input-lbl{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--tx2);letter-spacing:1.5px;margin-bottom:4px}
+.confirm{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--gr);min-height:16px;margin-top:4px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}
+@media(max-width:900px){.wrap{grid-template-columns:1fr}.two{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <div class="logo">
+    <div class="lmark">DX</div>
+    <div>
+      <div class="ltxt">DEX BOT</div>
+      <div class="lsub">MISSION CONTROL</div>
+    </div>
+  </div>
+  <div class="hdr-right">
+    <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--tx3)" id="last-run-hdr">—</div>
+    <div class="live-pill offline" id="live-pill">
+      <div class="live-dot"></div>
+      <span id="live-txt">CHECKING...</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <aside class="side">
+
+    <div>
+      <div class="slabel">Bot stats</div>
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-lbl">POSTS TODAY</div>
+          <div class="stat-val" id="posts-today">—</div>
+          <div class="stat-sub">from Bluesky profile</div>
+        </div>
+        <div class="stat">
+          <div class="stat-lbl">TOTAL POSTS</div>
+          <div class="stat-val" id="posts-total">—</div>
+          <div class="stat-sub">all time</div>
+        </div>
+        <div class="stat">
+          <div class="stat-lbl">LAST RUN</div>
+          <div class="stat-val" style="font-size:16px" id="last-run-stat">—</div>
+          <div class="stat-sub" id="last-run-label">checking...</div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="slabel">Schedule (CST)</div>
+      <div class="sched-list" id="sched-list"></div>
+    </div>
+
+    <div>
+      <div class="slabel">Post type weights</div>
+      <div class="weight-list">
+        <div class="weight-row"><span class="post-type type-hot_take" style="min-width:72px;text-align:center">HOT TAKE</span><div class="weight-bar-wrap"><div class="weight-bar" style="width:33%"></div></div><span class="weight-pct">33%</span></div>
+        <div class="weight-row"><span class="post-type type-challenge" style="min-width:72px;text-align:center">CHALLENGE</span><div class="weight-bar-wrap"><div class="weight-bar" style="width:33%"></div></div><span class="weight-pct">33%</span></div>
+        <div class="weight-row"><span class="post-type type-poll" style="min-width:72px;text-align:center">POLL</span><div class="weight-bar-wrap"><div class="weight-bar" style="width:22%"></div></div><span class="weight-pct">22%</span></div>
+        <div class="weight-row"><span class="post-type type-tip" style="min-width:72px;text-align:center">TIP</span><div class="weight-bar-wrap"><div class="weight-bar" style="width:11%"></div></div><span class="weight-pct">11%</span></div>
+      </div>
+      <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--tx3);margin-top:8px">UPDATE + PROMO fire situationally</div>
+    </div>
+
+  </aside>
+
+  <div class="main">
+
+    <!-- Manual trigger -->
+    <div class="panel">
+      <div class="ph">
+        <div class="ptitle">MANUAL TRIGGER</div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--tx3)">GITHUB ACTIONS</div>
+      </div>
+      <div class="pb">
+        <div class="trigger-wrap">
+          <div>
+            <div class="input-lbl">GITHUB TOKEN (needed to trigger)</div>
+            <input type="text" id="gh-token" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" />
+          </div>
+          <div>
+            <div class="input-lbl">FORCE POST TYPE (optional)</div>
+            <select id="force-type">
+              <option value="">Auto (weighted random)</option>
+              <option value="hot_take">Hot take</option>
+              <option value="challenge">Challenge</option>
+              <option value="poll">Poll</option>
+              <option value="tip">Tip</option>
+              <option value="update">CS2 Update</option>
+              <option value="promo">Stream promo</option>
+            </select>
+          </div>
+          <button class="trigger-btn" id="trigger-btn" onclick="triggerWorkflow()">▶ RUN BOT NOW</button>
+          <div class="confirm" id="trigger-confirm"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="two">
+
+      <!-- Recent posts -->
+      <div class="panel">
+        <div class="ph">
+          <div class="ptitle">RECENT POSTS</div>
+          <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--tx3)" id="posts-loaded">loading...</div>
+        </div>
+        <div class="pb">
+          <div id="posts-list" class="posts-list">
+            <div class="empty">// LOADING BLUESKY POSTS...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Log + workflow runs -->
+      <div style="display:flex;flex-direction:column;gap:1.5rem">
+        <div class="panel">
+          <div class="ph">
+            <div class="ptitle">WORKFLOW RUNS</div>
+            <a href="https://github.com/dexteritycs/cs2-bluesky-bot/actions" target="_blank" style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--o);text-decoration:none">VIEW ALL ↗</a>
+          </div>
+          <div class="pb">
+            <div id="runs-list" style="display:flex;flex-direction:column;gap:6px">
+              <div class="empty">// LOADING RUNS...</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="ph">
+            <div class="ptitle">ACTIVITY LOG</div>
+            <button onclick="clearLog()" style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--tx2);background:none;border:none;cursor:pointer">CLEAR</button>
+          </div>
+          <div class="pb" style="padding:0">
+            <div class="log" id="log">
+              <div class="ll info"><span class="lts">--:--:--</span>DEX BOT Mission Control loaded.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+const BLUESKY_HANDLE = 'dexteritycs.bsky.social';
+const GH_OWNER       = 'dexteritycs';
+const GH_REPO        = 'cs2-bluesky-bot';
+const GH_WORKFLOW    = 'cs2-bot.yml';
+
+// ── Schedule (UTC crons converted to CST display) ─────────────
+const SCHEDULES = [
+  { label: 'Weekday noon',     cron: {h:18, d:'1-5'}, display: '12:00 PM' },
+  { label: 'Weekday 5pm',      cron: {h:23, d:'1-5'}, display: '5:00 PM'  },
+  { label: 'Weekday 8pm',      cron: {h:2,  d:'2-6'}, display: '8:00 PM'  },
+  { label: 'Weekend 10am',     cron: {h:16, d:'0,6'}, display: '10:00 AM' },
+  { label: 'Weekend 3pm',      cron: {h:21, d:'0,6'}, display: '3:00 PM'  },
+  { label: 'Weekend 6pm',      cron: {h:0,  d:'0,1'}, display: '6:00 PM'  },
+  { label: 'Weekend 9pm',      cron: {h:3,  d:'0,1'}, display: '9:00 PM'  },
+];
+
+function ts() { return new Date().toTimeString().slice(0,8); }
+
+function addLog(msg, cls='') {
+  const feed = document.getElementById('log');
+  const el   = document.createElement('div');
+  el.className = 'll ' + cls;
+  el.innerHTML = `<span class="lts">${ts()}</span>${msg}`;
+  feed.appendChild(el);
+  feed.scrollTop = feed.scrollHeight;
+}
+
+function clearLog() { document.getElementById('log').innerHTML = ''; }
+
+function timeAgo(dateStr) {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const m = Math.floor(diff / 60000);
+  const h = Math.floor(m / 60);
+  const d = Math.floor(h / 24);
+  if (d > 0) return `${d}d ago`;
+  if (h > 0) return `${h}h ago`;
+  if (m > 0) return `${m}m ago`;
+  return 'just now';
+}
+
+function getNextOccurrences() {
+  const now = new Date();
+  const results = [];
+  for (let i = 0; i < 14; i++) {
+    const d = new Date(now);
+    d.setDate(d.getDate() + i);
+    for (const s of SCHEDULES) {
+      const t = new Date(d);
+      t.setUTCHours(s.cron.h, 0, 0, 0);
+      if (t > now) results.push({ label: s.label, display: s.display, time: t });
+    }
+  }
+  results.sort((a,b) => a.time - b.time);
+  return results.slice(0, 7);
+}
+
+function renderSchedule() {
+  const slots = getNextOccurrences();
+  const el    = document.getElementById('sched-list');
+  el.innerHTML = slots.map((s, i) => {
+    const diff    = s.time - Date.now();
+    const h       = Math.floor(diff / 3600000);
+    const m       = Math.floor((diff % 3600000) / 60000);
+    const cdLabel = h > 0 ? `in ${h}h ${m}m` : `in ${m}m`;
+    return `<div class="sched-row ${i===0?'next':''}">
+      <div>
+        <div class="sched-time">${s.display}</div>
+        <div class="sched-lbl">${s.label}</div>
+      </div>
+      <div class="sched-cd">${cdLabel}</div>
+    </div>`;
+  }).join('');
+}
+
+function detectPostType(text) {
+  const t = text.toLowerCase();
+  if (t.includes('update') || t.includes('patch') || t.includes('release note')) return 'update';
+  if (t.includes('twitch') || t.includes('live') || t.includes('stream')) return 'promo';
+  if (t.includes('agree or disagree') || t.includes('pick one') || t.includes('reply with')) return 'poll';
+  if (t.includes('drop your') || t.includes('reply') || t.includes('name a') || t.includes('what map')) return 'challenge';
+  if (t.includes('tip') || t.includes('smoke') || t.includes('flash') || t.includes('b site') || t.includes('a site')) return 'tip';
+  return 'hot_take';
+}
+
+// ── Fetch Bluesky posts ───────────────────────────────────────
+async function loadBlueSkyPosts() {
+  addLog('Fetching Bluesky posts...', 'info');
+  try {
+    const res  = await fetch(`https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=${BLUESKY_HANDLE}&limit=15`);
+    const data = await res.json();
+    const feed = data.feed || [];
+    const posts = feed.filter(f => !f.reply).map(f => f.post);
+
+    document.getElementById('posts-loaded').textContent = `${posts.length} posts`;
+
+    // Today count
+    const today = new Date().toDateString();
+    const todayCount = posts.filter(p => new Date(p.record.createdAt).toDateString() === today).length;
+    document.getElementById('posts-today').textContent = todayCount;
+    document.getElementById('posts-total').textContent = posts.length;
+
+    if (!posts.length) {
+      document.getElementById('posts-list').innerHTML = '<div class="empty">// NO POSTS FOUND</div>';
+      return;
+    }
+
+    // Last run
+    const lastPost = posts[0];
+    const lastTime = new Date(lastPost.record.createdAt);
+    document.getElementById('last-run-stat').textContent = lastTime.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+    document.getElementById('last-run-label').textContent = timeAgo(lastPost.record.createdAt);
+    document.getElementById('last-run-hdr').textContent = `Last post ${timeAgo(lastPost.record.createdAt)}`;
+
+    document.getElementById('posts-list').innerHTML = posts.slice(0,8).map(p => {
+      const type  = detectPostType(p.record.text);
+      const likes = p.likeCount || 0;
+      const reposts = p.repostCount || 0;
+      const replies = p.replyCount || 0;
+      return `<div class="post-card">
+        <div class="post-top">
+          <span class="post-type type-${type}">${type.replace('_',' ')}</span>
+          <span class="post-time">${timeAgo(p.record.createdAt)}</span>
+        </div>
+        <div class="post-text">${p.record.text}</div>
+        <div class="post-meta">
+          <span class="post-stat">❤️ <span>${likes}</span></span>
+          <span class="post-stat">🔁 <span>${reposts}</span></span>
+          <span class="post-stat">💬 <span>${replies}</span></span>
+        </div>
+      </div>`;
+    }).join('');
+
+    addLog(`Loaded ${posts.length} posts from Bluesky`, 'ok');
+  } catch(e) {
+    addLog('Bluesky fetch failed: ' + e.message, 'err');
+    document.getElementById('posts-list').innerHTML = '<div class="empty">// FAILED TO LOAD POSTS</div>';
+  }
+}
+
+// ── Fetch GitHub workflow runs ────────────────────────────────
+async function loadWorkflowRuns() {
+  const token = document.getElementById('gh-token').value.trim();
+  if (!token) {
+    document.getElementById('runs-list').innerHTML = '<div class="empty">// ADD GITHUB TOKEN TO SEE RUNS</div>';
+    return;
+  }
+  try {
+    const res  = await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/actions/runs?per_page=5`, {
+      headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github+json' }
+    });
+    const data = await res.json();
+    const runs = data.workflow_runs || [];
+
+    document.getElementById('runs-list').innerHTML = runs.map(r => {
+      const status = r.conclusion === 'success' ? '✅' : r.conclusion === 'failure' ? '❌' : '⏳';
+      const color  = r.conclusion === 'success' ? 'var(--gr)' : r.conclusion === 'failure' ? 'var(--re)' : 'var(--ye)';
+      return `<div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg3);border:1px solid var(--bd2);padding:8px 12px;">
+        <div>
+          <div style="font-size:13px;color:var(--tx)">${status} ${r.display_title || r.name}</div>
+          <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--tx3);margin-top:2px">${timeAgo(r.created_at)} • ${r.run_number}</div>
+        </div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:${color}">${(r.conclusion || r.status || '').toUpperCase()}</div>
+      </div>`;
+    }).join('') || '<div class="empty">// NO RUNS FOUND</div>';
+
+    addLog(`Loaded ${runs.length} workflow runs`, 'ok');
+  } catch(e) {
+    addLog('GitHub runs fetch failed: ' + e.message, 'err');
+  }
+}
+
+// ── Trigger workflow ──────────────────────────────────────────
+async function triggerWorkflow() {
+  const token = document.getElementById('gh-token').value.trim();
+  const type  = document.getElementById('force-type').value;
+  const btn   = document.getElementById('trigger-btn');
+  const conf  = document.getElementById('trigger-confirm');
+
+  if (!token) { conf.style.color='var(--re)'; conf.textContent='// Add your GitHub token first'; return; }
+
+  btn.disabled = true; btn.textContent = 'TRIGGERING...';
+  addLog(`Triggering workflow${type ? ' ['+type+']' : ' [auto]'}...`, 'info');
+
+  try {
+    const res = await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/actions/workflows/${GH_WORKFLOW}/dispatches`, {
+      method:  'POST',
+      headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ ref: 'main', inputs: { post_type: type } })
+    });
+
+    if (res.status === 204) {
+      conf.style.color = 'var(--gr)';
+      conf.textContent = '// Workflow triggered — check Actions tab';
+      addLog('Workflow triggered successfully', 'ok');
+      setTimeout(() => loadWorkflowRuns(), 5000);
+    } else {
+      const err = await res.text();
+      throw new Error(err);
+    }
+  } catch(e) {
+    conf.style.color = 'var(--re)';
+    conf.textContent = '// Failed: ' + e.message.slice(0,60);
+    addLog('Trigger failed: ' + e.message, 'err');
+  }
+
+  btn.disabled = false; btn.textContent = '▶ RUN BOT NOW';
+  setTimeout(() => conf.textContent = '', 4000);
+}
+
+// ── Twitch live check ─────────────────────────────────────────
+async function checkLive() {
+  try {
+    const res  = await fetch('https://api.twitch.tv/helix/streams?user_login=dexterity_cs', {
+      headers: { 'Client-ID': 'kimne78kx3ncx6brgo4mv6wki5h1ko', 'Authorization': 'Bearer invalid' }
+    });
+    // If we get a 401 it means the stream endpoint responded — can't check without token from browser
+    // Instead check via third party
+    const r2   = await fetch('https://api.liveupdater.com/stream/twitch/dexterity_cs').catch(() => null);
+    if (r2?.ok) {
+      const d = await r2.json();
+      const live = d?.is_live || false;
+      const pill = document.getElementById('live-pill');
+      const txt  = document.getElementById('live-txt');
+      pill.className = `live-pill ${live ? 'online' : 'offline'}`;
+      txt.textContent = live ? 'LIVE NOW' : 'OFFLINE';
+    }
+  } catch { /* silently fail */ }
+}
+
+// ── Init ──────────────────────────────────────────────────────
+renderSchedule();
+setInterval(renderSchedule, 60000);
+loadBlueSkyPosts();
+setInterval(loadBlueSkyPosts, 120000);
+checkLive();
+setInterval(checkLive, 60000);
+
+// Load runs when token is entered
+document.getElementById('gh-token').addEventListener('change', loadWorkflowRuns);
+</script>
+</body>
+</html>
