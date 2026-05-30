@@ -1,0 +1,45 @@
+name: CS2 Bluesky Bot
+
+on:
+  schedule:
+    # All times UTC — CST is UTC-6 (UTC-5 during daylight saving)
+    - cron: "0 18 * * 1-5"   # Weekday noon CST
+    - cron: "0 23 * * 1-5"   # Weekday 5pm CST
+    - cron: "0 2 * * 2-6"    # Weekday 8pm CST (next UTC day)
+    - cron: "0 16 * * 0,6"   # Weekend 10am CST
+    - cron: "0 21 * * 0,6"   # Weekend 3pm CST
+    - cron: "0 0 * * 0,1"    # Weekend 6pm CST (next UTC day)
+    - cron: "0 3 * * 0,1"    # Weekend 9pm CST (next UTC day)
+
+  # Allow manual trigger from GitHub Actions tab
+  workflow_dispatch:
+    inputs:
+      post_type:
+        description: 'Force a specific post type (leave blank for auto)'
+        required: false
+        default: ''
+
+jobs:
+  post-to-bluesky:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install @anthropic-ai/sdk node-fetch
+
+      - name: Run bot
+        env:
+          ANTHROPIC_API_KEY:    ${{ secrets.ANTHROPIC_API_KEY }}
+          BLUESKY_HANDLE:       ${{ secrets.BLUESKY_HANDLE }}
+          BLUESKY_APP_PASSWORD: ${{ secrets.BLUESKY_APP_PASSWORD }}
+          TWITCH_CLIENT_ID:     ${{ secrets.TWITCH_CLIENT_ID }}
+          TWITCH_CLIENT_SECRET: ${{ secrets.TWITCH_CLIENT_SECRET }}
+          FORCE_TYPE:           ${{ github.event.inputs.post_type }}
+        run: node .github/workflows/bot.mjs
