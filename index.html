@@ -191,7 +191,12 @@ input[type=text]:focus{border-color:var(--o)}
         <div class="trigger-wrap">
           <div>
             <div class="input-lbl">GITHUB TOKEN (needed to trigger)</div>
-            <input type="text" id="gh-token" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" />
+            <input type="password" id="gh-token" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off" />
+            <div style="display:flex;align-items:center;gap:8px;margin-top:6px;">
+              <input type="checkbox" id="remember-token" style="width:auto;clip-path:none;accent-color:var(--o)" onchange="toggleRemember()" />
+              <label for="remember-token" style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--tx2);cursor:pointer;letter-spacing:1px;">REMEMBER ON THIS DEVICE</label>
+              <button onclick="clearToken()" style="margin-left:auto;background:none;border:none;font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--tx3);cursor:pointer;letter-spacing:1px;">CLEAR</button>
+            </div>
           </div>
           <div>
             <div class="input-lbl">FORCE POST TYPE (optional)</div>
@@ -429,7 +434,37 @@ async function loadWorkflowRuns() {
   }
 }
 
-// ── Trigger workflow ──────────────────────────────────────────
+// ── Token memory ─────────────────────────────────────────────
+function toggleRemember() {
+  const token     = document.getElementById('gh-token').value.trim();
+  const remember  = document.getElementById('remember-token').checked;
+  if (remember && token) {
+    localStorage.setItem('dexbot_gh_token', token);
+    addLog('Token saved to local storage', 'ok');
+  } else {
+    localStorage.removeItem('dexbot_gh_token');
+    addLog('Token removed from local storage');
+  }
+}
+
+function clearToken() {
+  document.getElementById('gh-token').value = '';
+  document.getElementById('remember-token').checked = false;
+  localStorage.removeItem('dexbot_gh_token');
+  addLog('Token cleared');
+}
+
+// Save token automatically when typed if remember is checked
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('gh-token').addEventListener('input', () => {
+    if (document.getElementById('remember-token').checked) {
+      const token = document.getElementById('gh-token').value.trim();
+      if (token) localStorage.setItem('dexbot_gh_token', token);
+    }
+  });
+});
+
+// ── Trigger workflow ──────────────────────────────────────────────
 async function triggerWorkflow() {
   const token = document.getElementById('gh-token').value.trim();
   const type  = document.getElementById('force-type').value;
