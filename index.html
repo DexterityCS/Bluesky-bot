@@ -539,6 +539,18 @@ setInterval(checkLive, 60000);
 
 // Load runs when token is entered
 document.getElementById('gh-token').addEventListener('change', loadWorkflowRuns);
-</script>
-</body>
-</html>
+
+// ── Init ──────────────────────────────────────────────────
+// Load saved token — runs after all elements exist
+function initToken() {
+  const savedToken = localStorage.getItem('dexbot_gh_token');
+  const rememberOn = localStorage.getItem('dexbot_remember') === 'true';
+  addLog(`localStorage check — token: ${savedToken ? 'found' : 'empty'}, remember: ${rememberOn}`, 'info');
+  if (savedToken && rememberOn) {
+    document.getElementById('gh-token').value = savedToken;
+    document.getElementById('remember-token').checked = true;
+    addLog('Token loaded — ready', 'ok');
+    loadWorkflowRuns();
+  }
+}
+setTimeout(initToken, 100);
