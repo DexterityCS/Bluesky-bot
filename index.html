@@ -475,6 +475,7 @@ async function triggerWorkflow() {
       headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github+json' }
     });
     const wfData = await wfRes.json();
+    addLog(`API returned ${(wfData.workflows||[]).length} workflows: ${(wfData.workflows||[]).map(w=>w.path).join(', ')}`, 'info');
     const wf     = (wfData.workflows || []).find(w => w.path.includes('cs2-bot'));
     if (!wf) throw new Error('Workflow not found — check Actions tab on GitHub');
     addLog(`Found workflow: ${wf.name} (${wf.id})`, 'info');
