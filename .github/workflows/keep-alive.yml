@@ -1,0 +1,39 @@
+name: Keep Alive
+
+on:
+  schedule:
+    # Runs every 59 days at noon UTC
+    - cron: "0 12 1 * *"   # 1st of every month (well within 59 days)
+
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  keep-alive:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Update stats file
+        run: |
+          mkdir -p data
+          echo "{
+            \"last_updated\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
+            \"bot_version\": \"1.0\",
+            \"status\": \"active\",
+            \"handle\": \"dexteritycs.bsky.social\",
+            \"post_types\": [\"hot_take\", \"challenge\", \"poll\", \"tip\", \"update\", \"promo\"],
+            \"schedule\": \"7x daily\",
+            \"note\": \"Auto-generated bot stats — updated monthly\"
+          }" > data/bot-stats.json
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/bot-stats.json
+          git commit -m "chore: update bot stats $(date -u +%Y-%m-%d)"
+          git push
