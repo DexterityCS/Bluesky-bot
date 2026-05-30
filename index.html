@@ -477,7 +477,16 @@ async function triggerWorkflow() {
   addLog(`Triggering workflow${type ? ' ['+type+']' : ' [auto]'}...`, 'info');
 
   try {
-    const res = await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/actions/workflows/${GH_WORKFLOW}/dispatches`, {
+    // First get the workflow ID
+    const wfRes  = await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/actions/workflows`, {
+      headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github+json' }
+    });
+    const wfData = await wfRes.json();
+    const wf     = (wfData.workflows || []).find(w => w.path.includes('cs2-bot'));
+    if (!wf) throw new Error('Workflow not found — check Actions tab on GitHub');
+    addLog(`Found workflow: ${wf.name} (${wf.id})`, 'info');
+
+    const res = await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/actions/workflows/${wf.id}/dispatches`, {
       method:  'POST',
       headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' },
       body:    JSON.stringify({ ref: 'main', inputs: { post_type: type } })
