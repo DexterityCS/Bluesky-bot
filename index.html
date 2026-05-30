@@ -440,12 +440,14 @@ function toggleRemember() {
   const remember = document.getElementById('remember-token').checked;
   if (remember && token) {
     localStorage.setItem('dexbot_gh_token', token);
+    localStorage.setItem('dexbot_remember', 'true');
     addLog('Token saved — will auto-load next visit', 'ok');
   } else if (remember && !token) {
     addLog('Paste your token first, then tick remember', 'err');
     document.getElementById('remember-token').checked = false;
   } else {
     localStorage.removeItem('dexbot_gh_token');
+    localStorage.removeItem('dexbot_remember');
     addLog('Token removed from local storage');
   }
 }
