@@ -439,9 +439,19 @@ function toggleRemember() {
   const token    = document.getElementById('gh-token').value.trim();
   const remember = document.getElementById('remember-token').checked;
   if (remember && token) {
-    localStorage.setItem('dexbot_gh_token', token);
-    localStorage.setItem('dexbot_remember', 'true');
-    addLog('Token saved — will auto-load next visit', 'ok');
+    try {
+      localStorage.setItem('dexbot_gh_token', token);
+      localStorage.setItem('dexbot_remember', 'true');
+      // Verify it saved
+      const check = localStorage.getItem('dexbot_gh_token');
+      if (check === token) {
+        addLog('Token saved and verified in localStorage', 'ok');
+      } else {
+        addLog('Save failed — localStorage not persisting', 'err');
+      }
+    } catch(e) {
+      addLog('localStorage error: ' + e.message, 'err');
+    }
   } else if (remember && !token) {
     addLog('Paste your token first, then tick remember', 'err');
     document.getElementById('remember-token').checked = false;
