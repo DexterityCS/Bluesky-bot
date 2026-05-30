@@ -436,11 +436,14 @@ async function loadWorkflowRuns() {
 
 // ── Token memory ─────────────────────────────────────────────
 function toggleRemember() {
-  const token     = document.getElementById('gh-token').value.trim();
-  const remember  = document.getElementById('remember-token').checked;
+  const token    = document.getElementById('gh-token').value.trim();
+  const remember = document.getElementById('remember-token').checked;
   if (remember && token) {
     localStorage.setItem('dexbot_gh_token', token);
-    addLog('Token saved to local storage', 'ok');
+    addLog('Token saved — will auto-load next visit', 'ok');
+  } else if (remember && !token) {
+    addLog('Paste your token first, then tick remember', 'err');
+    document.getElementById('remember-token').checked = false;
   } else {
     localStorage.removeItem('dexbot_gh_token');
     addLog('Token removed from local storage');
@@ -453,16 +456,6 @@ function clearToken() {
   localStorage.removeItem('dexbot_gh_token');
   addLog('Token cleared');
 }
-
-// Save token automatically when typed if remember is checked
-document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('gh-token').addEventListener('input', () => {
-    if (document.getElementById('remember-token').checked) {
-      const token = document.getElementById('gh-token').value.trim();
-      if (token) localStorage.setItem('dexbot_gh_token', token);
-    }
-  });
-});
 
 // ── Trigger workflow ──────────────────────────────────────────────
 async function triggerWorkflow() {
