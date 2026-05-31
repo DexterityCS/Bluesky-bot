@@ -1,0 +1,75 @@
+name: CS2 Update Alert
+
+on:
+  schedule:
+    # Check every 30 minutes
+    - cron: "0,30 * * * *"
+  workflow_dispatch:
+
+jobs:
+  check-update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check for new CS2 update
+        env:
+          DISCORD_WEBHOOK: "https://discord.com/api/webhooks/1510434703759507556/sV6IWsUB6yn685QObAzRWNWNQhIKXOKqFF6jA86HXwb2dqBTrANofbSSr80lcu6irZQn"
+        run: |
+          # Fetch latest CS2 news from Steam API
+          RESPONSE=$(curl -s "https://api.steampowered.com/ISteamNews/GetNewsForApp/v2/?appid=730&count=1&maxlength=500&format=json")
+
+          # Extract latest item
+          TITLE=$(echo $RESPONSE | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['appnews']['newsitems'][0]['title'])" 2>/dev/null)
+          GID=$(echo $RESPONSE | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['appnews']['newsitems'][0]['gid'])" 2>/dev/null)
+          URL=$(echo $RESPONSE | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['appnews']['newsitems'][0]['url'])" 2>/dev/null)
+          DATE=$(echo $RESPONSE | python3 -c "import sys,json,datetime; d=json.load(sys.stdin); ts=d['appnews']['newsitems'][0]['date']; print(datetime.datetime.fromtimestamp(ts).strftime('%b %d, %Y'))" 2>/dev/null)
+
+          # Check if this is a real update post
+          if [[ "$TITLE" != *"Update"* ]] && [[ "$TITLE" != *"Release Notes"* ]] && [[ "$TITLE" != *"CS2"* ]]; then
+            echo "Not a game update, skipping."
+            exit 0
+          fi
+
+          # Check cache file for last seen update ID
+          CACHE_FILE=".cs2-update-cache"
+          LAST_GID=""
+          if [ -f "$CACHE_FILE" ]; then
+            LAST_GID=$(cat "$CACHE_FILE")
+          fi
+
+          if [ "$GID" = "$LAST_GID" ]; then
+            echo "No new update (GID: $GID)"
+            exit 0
+          fi
+
+          echo "New update detected: $TITLE (GID: $GID)"
+
+          # Save new GID to cache
+          echo "$GID" > "$CACHE_FILE"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "$CACHE_FILE"
+          git commit -m "chore: update CS2 cache [$GID]" || echo "Nothing to commit"
+          git push || echo "Push failed"
+
+          # Post to Discord
+          curl -s -X POST "$DISCORD_WEBHOOK" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"embeds\": [{
+                \"title\": \"🎮 $TITLE\",
+                \"description\": \"A new CS2 update just dropped. Check the patch notes for what changed.\",
+                \"url\": \"$URL\",
+                \"color\": 3447003,
+                \"fields\": [
+                  { \"name\": \"Date\", \"value\": \"$DATE\", \"inline\": true },
+                  { \"name\": \"Source\", \"value\": \"[Steam News]($URL)\", \"inline\": true }
+                ],
+                \"footer\": { \"text\": \"DEX BOT • CS2 Update Tracker\" },
+                \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"
+              }]
+            }"
+
+          echo "Discord notification sent!"

@@ -1,0 +1,111 @@
+name: Stream Go-Live Alert
+
+on:
+  schedule:
+    # Check every 5 minutes
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+jobs:
+  check-live:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check if live and notify Discord
+        env:
+          TWITCH_CLIENT_ID:     ${{ secrets.TWITCH_CLIENT_ID }}
+          TWITCH_CLIENT_SECRET: ${{ secrets.TWITCH_CLIENT_SECRET }}
+          DISCORD_WEBHOOK:      "https://discord.com/api/webhooks/1510434916972761169/LqR36-6wxJGakQdH3t_sXOdNrK0zbBc17syqM86tTFqftnY54hBh01ClVTt-gqER79q0"
+          TWITCH_USERNAME:      "dexterity_cs"
+        run: |
+          # Get Twitch OAuth token
+          TOKEN=$(curl -s -X POST "https://id.twitch.tv/oauth2/token?client_id=$TWITCH_CLIENT_ID&client_secret=$TWITCH_CLIENT_SECRET&grant_type=client_credentials" | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+
+          # Check stream status
+          STREAM=$(curl -s "https://api.twitch.tv/helix/streams?user_login=$TWITCH_USERNAME" \
+            -H "Client-ID: $TWITCH_CLIENT_ID" \
+            -H "Authorization: Bearer $TOKEN")
+
+          IS_LIVE=$(echo $STREAM | python3 -c "import sys,json; d=json.load(sys.stdin); print('true' if d['data'] else 'false')" 2>/dev/null)
+
+          if [ "$IS_LIVE" != "true" ]; then
+            echo "Not live, skipping."
+            exit 0
+          fi
+
+          # Get stream details
+          TITLE=$(echo $STREAM | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['data'][0]['title'])" 2>/dev/null)
+          GAME=$(echo $STREAM | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['data'][0]['game_name'])" 2>/dev/null)
+          VIEWERS=$(echo $STREAM | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['data'][0]['viewer_count'])" 2>/dev/null)
+          THUMBNAIL=$(echo $STREAM | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['data'][0]['thumbnail_url'].replace('{width}','1280').replace('{height}','720'))" 2>/dev/null)
+
+          # Check cache — only notify once per stream session
+          CACHE_FILE=".stream-live-cache"
+          LAST_STATE=""
+          if [ -f "$CACHE_FILE" ]; then
+            LAST_STATE=$(cat "$CACHE_FILE")
+          fi
+
+          if [ "$LAST_STATE" = "live" ]; then
+            echo "Already notified for this stream session."
+            exit 0
+          fi
+
+          echo "Stream just went live! Notifying Discord..."
+
+          # Save live state
+          echo "live" > "$CACHE_FILE"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "$CACHE_FILE"
+          git commit -m "chore: stream live state update" || echo "Nothing to commit"
+          git push || echo "Push failed"
+
+          # Post to Discord
+          curl -s -X POST "$DISCORD_WEBHOOK" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"content\": \"@everyone\",
+              \"embeds\": [{
+                \"title\": \"🔴 DexterityCS is LIVE\",
+                \"description\": \"**$TITLE**\n\n[Watch now on Twitch](https://twitch.tv/dexterity_cs)\",
+                \"url\": \"https://twitch.tv/dexterity_cs\",
+                \"color\": 9520895,
+                \"fields\": [
+                  { \"name\": \"Game\", \"value\": \"$GAME\", \"inline\": true },
+                  { \"name\": \"Viewers\", \"value\": \"$VIEWERS\", \"inline\": true }
+                ],
+                \"image\": { \"url\": \"$THUMBNAIL\" },
+                \"footer\": { \"text\": \"DEX BOT • Stream Alerts\" },
+                \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"
+              }]
+            }"
+
+          echo "Discord go-live notification sent!"
+
+      - name: Reset live cache when offline
+        env:
+          TWITCH_CLIENT_ID:     ${{ secrets.TWITCH_CLIENT_ID }}
+          TWITCH_CLIENT_SECRET: ${{ secrets.TWITCH_CLIENT_SECRET }}
+          TWITCH_USERNAME:      "dexterity_cs"
+        run: |
+          TOKEN=$(curl -s -X POST "https://id.twitch.tv/oauth2/token?client_id=$TWITCH_CLIENT_ID&client_secret=$TWITCH_CLIENT_SECRET&grant_type=client_credentials" | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+
+          STREAM=$(curl -s "https://api.twitch.tv/helix/streams?user_login=$TWITCH_USERNAME" \
+            -H "Client-ID: $TWITCH_CLIENT_ID" \
+            -H "Authorization: Bearer $TOKEN")
+
+          IS_LIVE=$(echo $STREAM | python3 -c "import sys,json; d=json.load(sys.stdin); print('true' if d['data'] else 'false')" 2>/dev/null)
+
+          CACHE_FILE=".stream-live-cache"
+          if [ "$IS_LIVE" != "true" ] && [ -f "$CACHE_FILE" ] && [ "$(cat $CACHE_FILE)" = "live" ]; then
+            echo "Stream ended — resetting cache for next session."
+            echo "offline" > "$CACHE_FILE"
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add "$CACHE_FILE"
+            git commit -m "chore: stream offline state update" || echo "Nothing to commit"
+            git push || echo "Push failed"
+          fi
