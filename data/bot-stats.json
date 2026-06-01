@@ -1,0 +1,9 @@
+{
+  "last_updated": "2026-06-01T17:09:29Z",
+  "bot_version": "1.0",
+  "status": "active",
+  "handle": "dexteritycs.bsky.social",
+  "post_types": ["hot_take", "challenge", "poll", "tip", "update", "promo"],
+  "schedule": "7x daily",
+  "note": "Auto-generated bot stats — updated monthly"
+}
